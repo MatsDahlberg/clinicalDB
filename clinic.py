@@ -6,8 +6,6 @@ import json
 import tornado.auth as auth
 import tornado.httpclient as httpclient
 import ast
-import copy
-import smtplib
 import datetime
 import credentials as cred
 
