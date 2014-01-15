@@ -30,13 +30,7 @@ application = tornado.web.Application([
                                       cookie_secret="31oETzKXQAGaYdkL9gEmGeJJFuYh7EQnp1XdTP1o/Vo=",
                                       login_url="/login", debug=True)
 
-http_server = tornado.httpserver.HTTPServer(application,
-                                            ssl_options={
-                                                "certfile": "scilife_wildcard/server.crt",
-                                                "keyfile": "scilife_wildcard/myserver.key",
-                                                })
 
 if __name__ == "__main__":
     application.listen(8082)
-    #http_server.listen(8082)
     tornado.ioloop.IOLoop.instance().start()
