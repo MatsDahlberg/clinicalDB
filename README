@@ -1,0 +1,5 @@
+clinicalDB - an interface to our MySql database
+=================================================
+
+*It uses [tornado](http://www.tornadoweb.org) to build a web-service interface to our clinical database*
+
