@@ -17,7 +17,7 @@ db = database.Connection(cred.mysqlHost,
 class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
         sInst = checkLogin(self, False)
-        if sInst == "" or sInst == None:
+        if sInst == "" or sInst == None or sInst == 'None':
             common.DBG("No institute, redirecting to error")
             self.redirect('/noInst')
         self.sInst = sInst
