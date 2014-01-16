@@ -1,6 +1,3 @@
-import hashlib 
-import os.path
-
 def cleanInput(sInput):
     if sInput != None:
         sInput = sInput.upper()

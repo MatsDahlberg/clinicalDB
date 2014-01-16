@@ -448,24 +448,19 @@ class geneInfo(BaseHandler):
             pass
 
     def get(self, *args, **kwargs):
-        try:
-            sInput = self.get_argument('data')
-            sInput = common.cleanInput(sInput)
-        except Exception as e:
-            common.DBG(e)
-            sInput = "" 
+        sInput = self.my_get_argument('data')
+        if sInput =="":
             return
+
         try:
-            sIem = self.get_argument('type')
-            sIem = common.cleanInput(sIem)
+            sIem = self.my_get_argument('type')
             if sIem not in ("IEM", "EP"):
                 sIem = "NO"
         except Exception as e:
             common.DBG(str(e))
             sIem = "NO"
         try:
-            sFamily = self.get_argument('family')
-            sFamily = common.cleanInput(sFamily)
+            sFamily = self.my_get_argument('family')
         except Exception as e:
             common.DBG(str(e))
             sFamily = ""
