@@ -16,6 +16,7 @@ db = database.Connection(cred.mysqlHost,
 
 class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
+        self.set_header("Cache-Control", "max-age=3600")
         sInst = checkLogin(self, False)
         if sInst == "" or sInst == None or sInst == 'None':
             common.DBG("No institute, redirecting to error")
