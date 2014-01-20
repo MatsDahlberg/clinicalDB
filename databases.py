@@ -13,10 +13,11 @@ logging.getLogger().setLevel(logging.DEBUG)
 application = tornado.web.Application([
     (r"/noInst", clinic.noInstitute),
     (r"/(favicon\.ico)", tornado.web.StaticFileHandler, {"path": "html"}),
-    (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "html"}),
+    (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static"}),
     (r"/families(/?)", clinic.families),
     (r"/families/(?P<family>[^\/]+)?/?", clinic.getFamily),
     (r"/families/(?P<family>[^\/]+)?/comments", clinic.familyLog),
+    (r"/families/(?P<family>[^\/]+)?/filter", clinic.familyFilter),
     (r"/families/(?P<family>[^\/]+)/(?P<database>[A-Za-z]+)", clinic.getFamilyDatabase),
     (r"/variants/(?P<variant>[\d]+)/gtcall", clinic.getVariantGtCall),
     (r"/variants/(?P<variant>[\d]+)", clinic.getVariant),

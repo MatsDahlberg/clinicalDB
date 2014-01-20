@@ -49,9 +49,15 @@ def getFamilyAttributes(tFamily):
         for iGa in range(len(tGa)):
             tGaRes.append({tGa[iGa].gene_annotation:iGa})
 
+        return {'id':tFamily[iRow].family,
+                'database':tFamily[iRow].iem,
+                'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
+                'inheritence_models':tGmRes,
+                'functional_annotations':tFaRes,
+                'gene_annotations':tGaRes}
+
         tRes.append({'id':tFamily[iRow].family,
                      'database':tFamily[iRow].iem,
-                     'pedigree':tFamily[iRow].pedigree,
                      'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                      'inheritence_models':tGmRes,
                      'functional_annotations':tFaRes,
@@ -136,59 +142,58 @@ class getVariant(BaseHandler):
         (v.pk=m.variantid and v.pk=a.variantid and v.family = f.family)
         left join clinical.variant_comment as c on
         (v.pk=c.variantid )
-        where v.pk='%s' and f.institute in %s  group by v.pk""" % (variant, self.sInst)
+        where v.pk='%s' and f.institute in %s group by v.pk""" % (variant, self.sInst)
 
         tVariants = db.query(sSql)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        tRes = []
-        for iRow in range(len(tVariants)):
-            tRes.append({'id':tVariants[iRow].pk,
-                         'database':tVariants[iRow].iem,
-                         'rank_score':tVariants[iRow].rank_score,
-                         'chr':tVariants[iRow].chr,
-                         'ref_nt':tVariants[iRow].ref_nt,
-                         'alt_nt':tVariants[iRow].alt_nt,
-                         'start_bp':tVariants[iRow].start_bp,
-                         'stop_bp':tVariants[iRow].stop_bp,
-                         'ensembl_geneid':tVariants[iRow].ensembl_geneid,
-                         'hgmd':tVariants[iRow].hgmd,
-                         'hgnc_symbol':tVariants[iRow].hgnc_symbol,
-                         'pseudogene':tVariants[iRow].pseudogene,
-                         'gene_model':tVariants[iRow].gene_model,
-                         'thousand_g':tVariants[iRow].thousand_g,
-                         'dbsnp129':tVariants[iRow].dbsnp129,
-                         'dbsnp_id':tVariants[iRow].dbsnp_id,
-                         'dbsnp':tVariants[iRow].dbsnp,
-                         'dbsnp132':tVariants[iRow].dbsnp132,
-                         'esp6500':tVariants[iRow].esp6500,
-                         'disease_group':tVariants[iRow].disease_group,
-                         'hgnc_approved_name':tVariants[iRow].hgnc_approved_name,
-                         'hgnc_synonyms':tVariants[iRow].hgnc_synonyms,
-                         'lrt_whole_exome':tVariants[iRow].lrt_whole_exome,
-                         'snorna_mirna_annotation':tVariants[iRow].snorna_mirna_annotation,
-                         'functional_annotation':tVariants[iRow].functional_annotation,
-                         'location_reliability':tVariants[iRow].location_reliability,
-                         'omim_gene_desc':tVariants[iRow].omim_gene_desc,
-                         'omim_morbid_desc':tVariants[iRow].omim_morbid_desc,
-                         'sift_whole_exome':tVariants[iRow].sift_whole_exome,
-                         'gerp_element':tVariants[iRow].gerp_element,
-                         'phast_const_elements':tVariants[iRow].phast_const_elements,
-                         'main_location':tVariants[iRow].main_location,
-                         'other_location':tVariants[iRow].other_location,
-                         'gwas_catalog':tVariants[iRow].gwas_catalog,
-                         'phylop_whole_exome':tVariants[iRow].phylop_whole_exome,
-                         'expression_type':tVariants[iRow].expression_type,
-                         'mutation_taster':tVariants[iRow].mutation_taster,
-                         'genomic_super_dups':tVariants[iRow].genomic_super_dups,
-                         'gene_annotation':tVariants[iRow].gene_annotation,
-                         'polyphen_div_human':tVariants[iRow].polyphen_div_human,
-                         'gerp_whole_exome':tVariants[iRow].gerp_whole_exome,
-                         'disease_group':tVariants[iRow].disease_group,
-                         'hgnc_transcript_id':tVariants[iRow].hgnc_transcript_id,
-                         'rating':tVariants[iRow].rating,
-                         'variant_count':tVariants[iRow].variant_count})
-        self.write(json.dumps(tRes, indent=4))
+
+        self.write(json.dumps(
+                        {'id':tVariants[0].pk,
+                         'database':tVariants[0].iem,
+                         'rank_score':tVariants[0].rank_score,
+                         'chr':tVariants[0].chr,
+                         'ref_nt':tVariants[0].ref_nt,
+                         'alt_nt':tVariants[0].alt_nt,
+                         'start_bp':tVariants[0].start_bp,
+                         'stop_bp':tVariants[0].stop_bp,
+                         'ensembl_geneid':tVariants[0].ensembl_geneid,
+                         'hgmd':tVariants[0].hgmd,
+                         'hgnc_symbol':tVariants[0].hgnc_symbol,
+                         'pseudogene':tVariants[0].pseudogene,
+                         'gene_model':tVariants[0].gene_model,
+                         'thousand_g':tVariants[0].thousand_g,
+                         'dbsnp129':tVariants[0].dbsnp129,
+                         'dbsnp_id':tVariants[0].dbsnp_id,
+                         'dbsnp':tVariants[0].dbsnp,
+                         'dbsnp132':tVariants[0].dbsnp132,
+                         'esp6500':tVariants[0].esp6500,
+                         'disease_group':tVariants[0].disease_group,
+                         'hgnc_approved_name':tVariants[0].hgnc_approved_name,
+                         'hgnc_synonyms':tVariants[0].hgnc_synonyms,
+                         'lrt_whole_exome':tVariants[0].lrt_whole_exome,
+                         'snorna_mirna_annotation':tVariants[0].snorna_mirna_annotation,
+                         'functional_annotation':tVariants[0].functional_annotation,
+                         'location_reliability':tVariants[0].location_reliability,
+                         'omim_gene_desc':tVariants[0].omim_gene_desc,
+                         'omim_morbid_desc':tVariants[0].omim_morbid_desc,
+                         'sift_whole_exome':tVariants[0].sift_whole_exome,
+                         'gerp_element':tVariants[0].gerp_element,
+                         'phast_const_elements':tVariants[0].phast_const_elements,
+                         'main_location':tVariants[0].main_location,
+                         'other_location':tVariants[0].other_location,
+                         'gwas_catalog':tVariants[0].gwas_catalog,
+                         'phylop_whole_exome':tVariants[0].phylop_whole_exome,
+                         'expression_type':tVariants[0].expression_type,
+                         'mutation_taster':tVariants[0].mutation_taster,
+                         'genomic_super_dups':tVariants[0].genomic_super_dups,
+                         'gene_annotation':tVariants[0].gene_annotation,
+                         'polyphen_div_human':tVariants[0].polyphen_div_human,
+                         'gerp_whole_exome':tVariants[0].gerp_whole_exome,
+                         'disease_group':tVariants[0].disease_group,
+                         'hgnc_transcript_id':tVariants[0].hgnc_transcript_id,
+                         'rating':tVariants[0].rating,
+                         'variant_count':tVariants[0].variant_count}, indent=4))
 
 class getFamilyDatabase(BaseHandler):
     def get(self, family, database):
@@ -359,7 +364,23 @@ class getVariantGtCall(BaseHandler):
 
 class getFamily(BaseHandler):
     def get(self, family):
-        tFamily = db.query("""select family, iem, pedigree, ts from clinical.family
+        sSql = """select family, iem, pedigree, DATE_FORMAT(ts, '%%Y-%%m-%%d') update_date
+                  from clinical.family
+                  where institute in """
+        sSql += self.sInst + ' and family= ' + family
+        print sSql
+        print self.sInst
+        print family
+        tFamily = db.query(sSql)
+
+        self.set_header("Content-Type", "application/json")
+        self.set_header('Access-Control-Allow-Origin', '*')
+        self.write(json.dumps(tFamily, indent=4))
+
+class familyFilter(BaseHandler):
+    def get(self, family):
+        tFamily = db.query("""select family, iem, pedigree, ts
+                              from clinical.family
                               where institute in %s and family='%s'""" % (self.sInst, family))
 
         self.set_header("Content-Type", "application/json")
@@ -471,8 +492,8 @@ class getVariantComment(BaseHandler):
         sVariant = common.cleanInput(variant)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        sSql = """SELECT u.email, u.name, DATE_FORMAT(comment_date, '%%Y-%%m-%%d') comment_date, variant_comment,
-                  rating, variantid FROM clinical.variant_comment c, clinical.users u
+        sSql = """SELECT u.email, u.name, DATE_FORMAT(comment_date, '%%Y-%%m-%%d') comment_date,
+                  variant_comment, rating, variantid FROM clinical.variant_comment c, clinical.users u
                   where c.user_pk = u.pk and variantid = %s order by comment_date"""
         tLog = db.query(sSql, sVariant)
         self.write(json.dumps(tLog, indent=4))
