@@ -70,7 +70,7 @@ def checkLogin(self, slask):
     #common.DBG(self.cookies)
     #common.DBG("Email: " + str(sEmail))
     sInst = str(sInst)
-    if sInst == None or sInst == '""':
+    if sInst == None or sInst == '""' or sInst == 'None':
         return None
     sInst = sInst.replace('"', '')
     saInst = sInst.split(',')
