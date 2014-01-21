@@ -16,7 +16,7 @@ db = database.Connection(cred.mysqlHost,
 
 class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
-        self.set_header("Cache-Control", "max-age=3600")
+        self.set_header("Cache-Control", "max-age=36000")
         sInst = checkLogin(self, False)
         if sInst == "" or sInst == None or sInst == 'None':
             common.DBG("No institute, redirecting to error")
@@ -72,6 +72,7 @@ def checkLogin(self, slask):
     #common.DBG("Email: " + str(sEmail))
     sInst = str(sInst)
     if sInst == None or sInst == '""' or sInst == 'None':
+        common.DBG("Error no institute: " + str(sInst))
         return None
     sInst = sInst.replace('"', '')
     saInst = sInst.split(',')
@@ -81,7 +82,6 @@ def checkLogin(self, slask):
             instList += "'" + str(saInst[i]) + "',"
         else:
             instList += "'" + str(saInst[i]) + "')"
-    common.DBG("Institute: " + instList)
     return instList
 
 class fourOfour(tornado.web.RequestHandler):
@@ -369,9 +369,6 @@ class getFamily(BaseHandler):
                   from clinical.family
                   where institute in """
         sSql += self.sInst + ' and family= ' + family
-        print sSql
-        print self.sInst
-        print family
         tFamily = db.query(sSql)
 
         self.set_header("Content-Type", "application/json")

@@ -1,7 +1,6 @@
 import tornado.template as template
 import tornado.httpserver
 import tornado.ioloop
-import tornado.escape
 import tornado.web
 import tornado.options
 import logging
