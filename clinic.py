@@ -8,6 +8,7 @@ import tornado.httpclient as httpclient
 import ast
 import datetime
 import credentials as cred
+import igv_session
 
 db = database.Connection(cred.mysqlHost,
                          cred.mysqlDb,
@@ -341,6 +342,14 @@ class getFamilyDatabase(BaseHandler):
                          'rating':tVariants[iRow].rating,
                          'variant_count':tVariants[iRow].variant_count})
         self.write(json.dumps(tRes, indent=4))
+
+class launchVariantIGV(tornado.web.RequestHandler):
+    def get(self, variant):
+        self.set_header("Content-Type", "text/xml")
+        tVariant = db.query("""select chr, (start_bp-100) as start_bp, (stop_bp+100) as stop_bp
+                               from clinical.variant where pk='%s'""" % (variant))
+        t = template.Template(igv_session.sessionXml)
+        self.write(t.generate(chr=tVariant[0].chr, start_bp=tVariant[0].start_bp, stop_bp=tVariant[0].stop_bp))
 
 class getVariantGtCall(BaseHandler):
     def get(self, variant):

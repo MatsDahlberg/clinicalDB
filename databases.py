@@ -19,6 +19,7 @@ application = tornado.web.Application([
     (r"/families/(?P<family>[^\/]+)?/filter", clinic.familyFilter),
     (r"/families/(?P<family>[^\/]+)/(?P<database>[A-Za-z]+)", clinic.getFamilyDatabase),
     (r"/variants/(?P<variant>[\d]+)/gtcall", clinic.getVariantGtCall),
+    (r"/variants/(?P<variant>[\d]+)/igv.xml", clinic.launchVariantIGV),
     (r"/variants/(?P<variant>[\d]+)", clinic.getVariant),
     (r"/variants/(?P<variant>[\d]+)/comments", clinic.getVariantComment),
     (r"/omim/(?P<gene>[^\/]+)?/?", clinic.omim),
