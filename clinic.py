@@ -733,6 +733,9 @@ class api(BaseHandler):
         sVariantComments = [{"Description":"Comments for a specific variant"},
                             {"Example":"http://clinical-db.scilifelab.se:8082/variants/2001982/comments"}]
 
+        sVariantIgv = [{"Description":"Generates an XML file for launching IGV to investigate a variant"},
+                       {"Example":"http://clinical-db.scilifelab.se:8082/variants/2001982/igv.xml"}]
+
         sGtCall = [{"Description":"GT-call data for a specific variant"},
                             {"Example":"http://clinical-db.scilifelab.se:8082/variants/1627432/gtcall"}]
 
@@ -749,8 +752,9 @@ class api(BaseHandler):
                                "05. Get 1 variant":sOneVariant,
                                "06. Get gt-call for a variant":sGtCall,
                                "07. Get comments for a variant":sVariantComments,
-                               "08. OMIM data for a gene":sOmim,
-                               "09. Get user data":sEmail
+                               "08. Generate an XML-file for the IGV-browser":sVariantIgv,
+                               "09. OMIM data for a gene":sOmim,
+                               "10. Get user data":sEmail
                                }], sort_keys=True, indent=4))
 
 class checkEmail(tornado.web.RequestHandler):
