@@ -9,6 +9,7 @@ import ast
 import datetime
 import credentials as cred
 import igv_session
+import OMIMkey
 
 db = database.Connection(cred.mysqlHost,
                          cred.mysqlDb,
@@ -661,7 +662,7 @@ class omim(BaseHandler):
         sInput = gene
         client = httpclient.AsyncHTTPClient()
 
-        sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=88F5BA30564A75C4B28F049673F43FDE5C9FF99A"
+        sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=" + OMIMkey.OMIMkey
         #sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=1CA3445230674C50904D46A059CDE2BC00BAD6E1"
         response = yield tornado.gen.Task(client.fetch, sUrl)
 
