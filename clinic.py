@@ -663,7 +663,6 @@ class omim(BaseHandler):
         client = httpclient.AsyncHTTPClient()
 
         sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=" + OMIMkey.OMIMkey
-        #sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=1CA3445230674C50904D46A059CDE2BC00BAD6E1"
         response = yield tornado.gen.Task(client.fetch, sUrl)
 
         def parseAllelicVariantList(saVariants):
