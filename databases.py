@@ -23,7 +23,6 @@ application = tornado.web.Application([
     (r"/variants/(?P<variant>[\d]+)", clinic.getVariant),
     (r"/variants/(?P<variant>[\d]+)/comments", clinic.getVariantComment),
     (r"/omim/(?P<gene>[^\/]+)?/?", clinic.omim),
-    (r"/testPost", clinic.testPost),
     (r"/api", clinic.api),
     (r"/geneInfo(.*)", clinic.geneInfo),
     (r"/checkEmail/(?P<email>[^\/]+)", clinic.checkEmail),    

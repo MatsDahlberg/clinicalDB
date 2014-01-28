@@ -555,16 +555,6 @@ class familyLog(tornado.web.RequestHandler):
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
         
-            
-class testPost(tornado.web.RequestHandler):
-    def get(self):
-        http_client = httpclient.HTTPClient()
-
-        post_data = { 'data': 'test data' } #A dictionary of your post data
-        body = urllib.urlencode(post_data) #Make it into a post request
-        http_client.fetch('http://clinical-db:8082/families/1/comments', method='POST', body=body)
-        print "there"
-
 class getRegion(BaseHandler):
     def loggedin(self, sChr, sBpStart, sBpStop, sIem, sFamily):
         self.set_header("Content-Type", "application/json")
