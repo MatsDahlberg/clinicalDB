@@ -10,6 +10,7 @@ import datetime
 import credentials as cred
 import igv_session
 import OMIMkey
+import urllib
 
 db = database.Connection(cred.mysqlHost,
                          cred.mysqlDb,
@@ -364,7 +365,6 @@ class getVariantGtCall(BaseHandler):
             from clinical.variant v, clinical.variation_quality q where
             v.pk = q.variantid and family='%s' and ensembl_geneid like %s and gene_model like %s
             group by start_bp order by rank_score desc""" % (tHgnc[0].family, "'%%" + tHgnc[0].ensembl_geneid + "%%'", "'%%compound%%'"))
-
         tRes = db.query("""SELECT * from clinical.variation_quality where variantid ='%s' order by idn""" % variant)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
@@ -506,7 +506,7 @@ class getVariantComment(BaseHandler):
         tLog = db.query(sSql, sVariant)
         self.write(json.dumps(tLog, indent=4))
 
-class familyLog(BaseHandler):
+class familyLog(tornado.web.RequestHandler):
     def get(self, family):
         sFamily = common.cleanInput(family)
         self.set_header("Content-Type", "application/json")
@@ -517,6 +517,53 @@ class familyLog(BaseHandler):
                   where u.email=l.email and family=%s order by log_date"""
         tLog = db.query(sSql, sFamily)
         self.write(json.dumps(tLog, indent=4))
+
+    def post(self, family):
+        data = ast.literal_eval(self.request.body)
+        sFamily = data['family']
+        sEmail = data['email']
+        sUserComment = data['user_comment']
+        sLogColumn = data['log_column']
+        sPositionInColumn = data['position_in_column']
+        
+        sSql = """select pk from clinical.family_log where
+                  email=%s and family=%s and log_column=%s and position_in_column=%s"""
+        tRes = db.query(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
+        if len(tRes) == 0:
+            sSql = """insert into clinical.family_log (email, family, log_column,
+                      position_in_column, user_comment, log_date)
+                      values (%s, %s, %s, %s, %s, now())"""
+            db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn, sUserComment)
+        else:
+            sSql = """update clinical.family_log
+                      set email=%s, family=%s, log_column=%s, position_in_column=%s, user_comment=%s
+                      where pk=%s"""
+            iPk = int(tRes[0].pk)
+            db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn, sUserComment, iPk)
+
+    def put(self, family):
+        self.post(family)
+
+    def delete(self, family):
+        data = ast.literal_eval(self.request.body)
+        sFamily = data['family']
+        sEmail = data['email']
+        sUserComment = data['user_comment']
+        sLogColumn = data['log_column']
+        sPositionInColumn = data['position_in_column']
+        sSql = """delete from clinical.family_log where
+                  email=%s and family=%s and log_column=%s and position_in_column=%s"""
+        tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
+        
+            
+class testPost(tornado.web.RequestHandler):
+    def get(self):
+        http_client = httpclient.HTTPClient()
+
+        post_data = { 'data': 'test data' } #A dictionary of your post data
+        body = urllib.urlencode(post_data) #Make it into a post request
+        http_client.fetch('http://clinical-db:8082/families/1/comments', method='POST', body=body)
+        print "there"
 
 class getRegion(BaseHandler):
     def loggedin(self, sChr, sBpStart, sBpStop, sIem, sFamily):
@@ -707,6 +754,7 @@ class omim(BaseHandler):
 
 class noInstitute(tornado.web.RequestHandler):
     def get(self):
+        self.set_status(406)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
         self.write(json.dumps({"Error":"No institute"}))
