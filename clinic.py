@@ -495,7 +495,7 @@ class geneInfo(BaseHandler):
             sFamily = ""
         self.loggedin(sInput, sIem, sFamily)
 
-class getVariantComment(BaseHandler):
+class getVariantComment(tornado.web.RequestHandler):
     def get(self, variant):
         sVariant = common.cleanInput(variant)
         self.set_header("Content-Type", "application/json")
@@ -506,26 +506,76 @@ class getVariantComment(BaseHandler):
         tLog = db.query(sSql, sVariant)
         self.write(json.dumps(tLog, indent=4))
 
+    def post(self, variant):
+        sVariant = common.cleanInput(variant)
+        data = ast.literal_eval(self.request.body)
+        try:
+            sEmail = data['email']
+            sRating = data['rating']
+            sComment = data['variant_comment']
+        except:
+            self.write(json.dumps({"Error":"Malformed JSON input"}))
+            return
+        sInst = db.query("""select institute from clinical.family f, clinical.variant v
+                           where f.family = v.family and v.pk='%s'""" % (sVariant))[0].institute
+        sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
+                           """  % (sEmail, sInst))[0].pk
+
+        tCommentPk = db.query("""select pk from clinical.variant_comment where user_pk='%s' and variantid='%s'
+                              """ % (sUserPk, sVariant))
+        if len(tCommentPk) == 0:
+            sSql = """insert into clinical.variant_comment (user_pk, comment_date, variant_comment, rating, variantid)
+                      values (%s, now(), %s, %s, %s)"""
+            db.execute(sSql, sUserPk, sComment, sRating, sVariant)
+        else:
+            sSql = """update clinical.variant_comment set user_pk=%s, comment_date=now(),
+                      variant_comment=%s, rating=%s, variantid=%s where pk=%s"""
+            db.execute(sSql, sUserPk, sComment, sRating, sVariant, tCommentPk[0].pk)
+
+    def put(self, variant):
+        self.post(variant)
+
+    def delete(self, variant):
+        sVariant = common.cleanInput(variant)
+        data = ast.literal_eval(self.request.body)
+        try:
+            sEmail = data['email']
+        except:
+            self.write(json.dumps({"Error":"Malformed JSON input"}))
+            return
+        sInst = db.query("""select institute from clinical.family f, clinical.variant v
+                           where f.family = v.family and v.pk='%s'""" % (sVariant))[0].institute
+        sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
+                           """  % (sEmail, sInst))[0].pk
+
+        sSql = """delete from clinical.variant_comment where
+                  user_pk=%s and variantid=%s"""
+        tRes = db.execute(sSql, sUserPk, sVariant)
+
 class familyLog(tornado.web.RequestHandler):
     def get(self, family):
         sFamily = common.cleanInput(family)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
 
+        tFam = db.query("""select institute from clinical.family where family='%s'""" % (sFamily))
         sSql = """select u.name user_name, u.email, l.family, log_column, DATE_FORMAT(log_date, '%%Y-%%m-%%d') log_date,
                   position_in_column, user_comment from clinical.users u, clinical.family_log l
-                  where u.email=l.email and family=%s order by log_date"""
-        tLog = db.query(sSql, sFamily)
+                  where u.institute=%s and u.email=l.email and family=%s order by log_date"""
+        tLog = db.query(sSql, tFam[0].institute, sFamily)
         self.write(json.dumps(tLog, indent=4))
 
     def post(self, family):
         data = ast.literal_eval(self.request.body)
-        sFamily = data['family']
-        sEmail = data['email']
-        sUserComment = data['user_comment']
-        sLogColumn = data['log_column']
-        sPositionInColumn = data['position_in_column']
-        
+        try:
+            sFamily = data['family']
+            sEmail = data['email']
+            sUserComment = data['user_comment']
+            sLogColumn = data['log_column']
+            sPositionInColumn = data['position_in_column']
+        except:
+            self.write(json.dumps({"Error":"Malformed JSON input"}))
+            return
         sSql = """select pk from clinical.family_log where
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.query(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
@@ -546,11 +596,16 @@ class familyLog(tornado.web.RequestHandler):
 
     def delete(self, family):
         data = ast.literal_eval(self.request.body)
-        sFamily = data['family']
-        sEmail = data['email']
-        sUserComment = data['user_comment']
-        sLogColumn = data['log_column']
-        sPositionInColumn = data['position_in_column']
+        try:
+            sFamily = data['family']
+            sEmail = data['email']
+            sUserComment = data['user_comment']
+            sLogColumn = data['log_column']
+            sPositionInColumn = data['position_in_column']
+        except:
+            self.write(json.dumps({"Error":"Malformed JSON input"}))
+            return
+
         sSql = """delete from clinical.family_log where
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
