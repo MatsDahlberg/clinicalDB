@@ -200,8 +200,11 @@ class getVariant(BaseHandler):
                          'variant_count':tVariants[0].variant_count}, indent=4))
 
 class getFamilyDatabase(BaseHandler):
-    def get(self, family, database):
-        if database.upper() not in ('IEM', 'EP'):
+    def get(self, family):
+        database = common.cleanInput(self.get_argument('database', ''))
+        if database.upper() not in ('IEM', 'EP', 'RESEARCH'):
+            return
+        if database == 'RESEARCH':
             database = 'NO'
         functionalSql = ""
         geneSql = ""
@@ -219,8 +222,9 @@ class getFamilyDatabase(BaseHandler):
                 gene_annotationsKeys.append(" a.gene_annotation='" + key.lower().split('gene_annotations_')[1] + "' ")
             if 'inheritence_models_' in key.lower():
                 inheritence_modelsKeys.append(" m.gene_model='" + key.lower().split('inheritence_models_')[1] + "' ")
-            if 'thousandg' == key.lower() or 'dbsnp129' == key.lower() or 'dbsnp132' == key.lower() or 'esp6500' == key.lower():
+            if 'thousand_g' == key.lower() or 'dbsnp129' == key.lower() or 'dbsnp132' == key.lower() or 'esp6500' == key.lower():
                 sKey = key.lower()
+                
                 sVal = common.cleanInput(self.get_argument(key))
                 sRelation = common.cleanInput(self.get_argument('relation', None))
                 if sRelation != None:
@@ -291,7 +295,7 @@ class getFamilyDatabase(BaseHandler):
         (v.pk=c.variantid )
         where v.iem='%s' and v.family='%s' and f.institute in %s
         """ % (database, family, self.sInst)
-        sSql += inheritenceSql + geneSql + functionalSql + sRelationSql + sGeneNameSql + " group by v.pk order by rank_score desc LIMIT 200"
+        sSql += inheritenceSql + geneSql + functionalSql + sRelationSql + sGeneNameSql + " group by v.pk order by rank_score desc LIMIT 100"
 
         tVariants = db.query(sSql)
         self.set_header("Content-Type", "application/json")
@@ -567,7 +571,7 @@ class getVariantComment(tornado.web.RequestHandler):
         self.get(sVariant)
 
 class familyLog(tornado.web.RequestHandler):
-    def get(self, family):
+    def get(self, family, email):
         sFamily = common.cleanInput(family)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
@@ -579,7 +583,7 @@ class familyLog(tornado.web.RequestHandler):
         tLog = db.query(sSql, tFam[0].institute, sFamily)
         self.write(json.dumps(tLog, indent=4))
 
-    def post(self, family):
+    def post(self, family, email):
         data = ast.literal_eval(self.request.body)
         try:
             sFamily = data['family']
@@ -604,12 +608,12 @@ class familyLog(tornado.web.RequestHandler):
                       where pk=%s"""
             iPk = int(tRes[0].pk)
             db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn, sUserComment, iPk)
-        self.get(sFamily)
+        self.get(sFamily, email)
 
-    def put(self, family):
-        self.post(family)
+    def put(self, family, email):
+        self.post(family, email)
 
-    def delete(self, family):
+    def delete(self, family, email):
         data = ast.literal_eval(self.request.body)
         try:
             sFamily = data['family']
@@ -624,7 +628,7 @@ class familyLog(tornado.web.RequestHandler):
         sSql = """delete from clinical.family_log where
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
-        self.get(sFamily)
+        self.get(sFamily, email)
         
 class getRegion(BaseHandler):
     def loggedin(self, sChr, sBpStart, sBpStop, sIem, sFamily):
