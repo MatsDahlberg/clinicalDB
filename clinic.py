@@ -507,7 +507,6 @@ class getVariantComment(tornado.web.RequestHandler):
         self.write(json.dumps(tLog, indent=4))
 
     def post(self, variant):
-        print self.request
         sVariant = common.cleanInput(variant)
         try:
             data = ast.literal_eval(self.request.body)
@@ -515,13 +514,19 @@ class getVariantComment(tornado.web.RequestHandler):
             sRating = data['rating']
             sComment = data['user_comment']
         except:
+            self.set_status(406)
             self.write(json.dumps({"Error":"Malformed JSON input"}))
             return
-        sInst = db.query("""select institute from clinical.family f, clinical.variant v
+        try:
+            sInst = db.query("""select institute from clinical.family f, clinical.variant v
                            where f.family = v.family and v.pk='%s'""" % (sVariant))[0].institute
-        sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
+            sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
                            """  % (sEmail, sInst))[0].pk
-
+        except:
+            self.set_status(406)
+            self.write(json.dumps({"Error":"Unknown email or institute, got: " + sInst + " " + sEmail}))
+            return
+            
         tCommentPk = db.query("""select pk from clinical.variant_comment where user_pk='%s' and variantid='%s'
                               """ % (sUserPk, sVariant))
         if len(tCommentPk) == 0:
@@ -532,6 +537,7 @@ class getVariantComment(tornado.web.RequestHandler):
             sSql = """update clinical.variant_comment set user_pk=%s, created_date=now(),
                       user_comment=%s, rating=%s, variantid=%s where pk=%s"""
             db.execute(sSql, sUserPk, sComment, sRating, sVariant, tCommentPk[0].pk)
+        self.get(sVariant)
 
     def put(self, variant):
         self.post(variant)
@@ -542,16 +548,23 @@ class getVariantComment(tornado.web.RequestHandler):
         try:
             sEmail = data['email']
         except:
+            self.set_status(406)
             self.write(json.dumps({"Error":"Malformed JSON input"}))
             return
-        sInst = db.query("""select institute from clinical.family f, clinical.variant v
+        try:
+            sInst = db.query("""select institute from clinical.family f, clinical.variant v
                            where f.family = v.family and v.pk='%s'""" % (sVariant))[0].institute
-        sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
+            sUserPk = db.query("""select pk from users where email ='%s' and institute='%s'
                            """  % (sEmail, sInst))[0].pk
+        except:
+            self.set_status(406)
+            self.write(json.dumps({"Error":"Unknown email or institute, got: " + sInst + " " + sEmail}))
+            return
 
         sSql = """delete from clinical.variant_comment where
                   user_pk=%s and variantid=%s"""
         tRes = db.execute(sSql, sUserPk, sVariant)
+        self.get(sVariant)
 
 class familyLog(tornado.web.RequestHandler):
     def get(self, family):
@@ -591,6 +604,7 @@ class familyLog(tornado.web.RequestHandler):
                       where pk=%s"""
             iPk = int(tRes[0].pk)
             db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn, sUserComment, iPk)
+        self.get(sFamily)
 
     def put(self, family):
         self.post(family)
@@ -610,6 +624,7 @@ class familyLog(tornado.web.RequestHandler):
         sSql = """delete from clinical.family_log where
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
+        self.get(sFamily)
         
 class getRegion(BaseHandler):
     def loggedin(self, sChr, sBpStart, sBpStop, sIem, sFamily):
