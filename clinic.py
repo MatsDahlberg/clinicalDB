@@ -378,7 +378,7 @@ class getFamily(BaseHandler):
         sSql = """select family, iem, pedigree, DATE_FORMAT(ts, '%%Y-%%m-%%d') update_date
                   from clinical.family
                   where institute in """
-        sSql += self.sInst + ' and family= ' + family
+        sSql += self.sInst + " and family= '" + family + "'"
         tFamily = db.query(sSql)
 
         self.set_header("Content-Type", "application/json")
@@ -500,19 +500,20 @@ class getVariantComment(tornado.web.RequestHandler):
         sVariant = common.cleanInput(variant)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        sSql = """SELECT u.email, u.name, DATE_FORMAT(comment_date, '%%Y-%%m-%%d') comment_date,
-                  variant_comment, rating, variantid FROM clinical.variant_comment c, clinical.users u
-                  where c.user_pk = u.pk and variantid = %s order by comment_date"""
+        sSql = """SELECT u.email, u.name user_name, DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
+                  user_comment, rating, variantid FROM clinical.variant_comment c, clinical.users u
+                  where c.user_pk = u.pk and variantid = %s order by created_date"""
         tLog = db.query(sSql, sVariant)
         self.write(json.dumps(tLog, indent=4))
 
     def post(self, variant):
+        print self.request
         sVariant = common.cleanInput(variant)
-        data = ast.literal_eval(self.request.body)
         try:
+            data = ast.literal_eval(self.request.body)
             sEmail = data['email']
             sRating = data['rating']
-            sComment = data['variant_comment']
+            sComment = data['user_comment']
         except:
             self.write(json.dumps({"Error":"Malformed JSON input"}))
             return
@@ -524,12 +525,12 @@ class getVariantComment(tornado.web.RequestHandler):
         tCommentPk = db.query("""select pk from clinical.variant_comment where user_pk='%s' and variantid='%s'
                               """ % (sUserPk, sVariant))
         if len(tCommentPk) == 0:
-            sSql = """insert into clinical.variant_comment (user_pk, comment_date, variant_comment, rating, variantid)
+            sSql = """insert into clinical.variant_comment (user_pk, created_date, user_comment, rating, variantid)
                       values (%s, now(), %s, %s, %s)"""
             db.execute(sSql, sUserPk, sComment, sRating, sVariant)
         else:
-            sSql = """update clinical.variant_comment set user_pk=%s, comment_date=now(),
-                      variant_comment=%s, rating=%s, variantid=%s where pk=%s"""
+            sSql = """update clinical.variant_comment set user_pk=%s, created_date=now(),
+                      user_comment=%s, rating=%s, variantid=%s where pk=%s"""
             db.execute(sSql, sUserPk, sComment, sRating, sVariant, tCommentPk[0].pk)
 
     def put(self, variant):
@@ -559,9 +560,9 @@ class familyLog(tornado.web.RequestHandler):
         self.set_header('Access-Control-Allow-Origin', '*')
 
         tFam = db.query("""select institute from clinical.family where family='%s'""" % (sFamily))
-        sSql = """select u.name user_name, u.email, l.family, log_column, DATE_FORMAT(log_date, '%%Y-%%m-%%d') log_date,
+        sSql = """select u.name user_name, u.email, l.family, log_column, DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
                   position_in_column, user_comment from clinical.users u, clinical.family_log l
-                  where u.institute=%s and u.email=l.email and family=%s order by log_date"""
+                  where u.institute=%s and u.email=l.email and family=%s order by created_date"""
         tLog = db.query(sSql, tFam[0].institute, sFamily)
         self.write(json.dumps(tLog, indent=4))
 
@@ -581,7 +582,7 @@ class familyLog(tornado.web.RequestHandler):
         tRes = db.query(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
         if len(tRes) == 0:
             sSql = """insert into clinical.family_log (email, family, log_column,
-                      position_in_column, user_comment, log_date)
+                      position_in_column, user_comment, created_date)
                       values (%s, %s, %s, %s, %s, now())"""
             db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn, sUserComment)
         else:
@@ -869,7 +870,7 @@ class checkEmail(tornado.web.RequestHandler):
 
             cRes = {'email':str(tRes[0].email),
                     'institute':sInstitute,
-                    'name':str(tRes[0].name)}
+                    'user_name':str(tRes[0].name)}
             self.set_cookie("institute", tornado.escape.json_encode(sInstitute))
             self.set_cookie("email", str(tRes[0].email))
             self.write(json.dumps(cRes, indent=4))
