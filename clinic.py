@@ -10,7 +10,6 @@ import datetime
 import credentials as cred
 import igv_session
 import OMIMkey
-import urllib
 
 db = database.Connection(cred.mysqlHost,
                          cred.mysqlDb,
