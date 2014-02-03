@@ -504,7 +504,7 @@ class getVariantComment(tornado.web.RequestHandler):
         sVariant = common.cleanInput(variant)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        sSql = """SELECT u.email, u.name user_name, DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
+        sSql = """SELECT c.pk, u.email, u.name user_name, DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
                   user_comment, rating, variantid FROM clinical.variant_comment c, clinical.users u
                   where c.user_pk = u.pk and variantid = %s order by created_date"""
         tLog = db.query(sSql, sVariant)
@@ -577,7 +577,8 @@ class familyLog(tornado.web.RequestHandler):
         self.set_header('Access-Control-Allow-Origin', '*')
 
         tFam = db.query("""select institute from clinical.family where family='%s'""" % (sFamily))
-        sSql = """select u.name user_name, u.email, l.family, log_column, DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
+        sSql = """select l.pk, u.name user_name, u.email, l.family, log_column,
+                  DATE_FORMAT(created_date, '%%Y-%%m-%%d') created_date,
                   position_in_column, user_comment from clinical.users u, clinical.family_log l
                   where u.institute=%s and u.email=l.email and family=%s order by created_date"""
         tLog = db.query(sSql, tFam[0].institute, sFamily)
@@ -629,7 +630,7 @@ class familyLog(tornado.web.RequestHandler):
                   email=%s and family=%s and log_column=%s and position_in_column=%s"""
         tRes = db.execute(sSql, sEmail, sFamily, sLogColumn, sPositionInColumn)
         self.get(sFamily, email)
-        
+
 class getRegion(BaseHandler):
     def loggedin(self, sChr, sBpStart, sBpStop, sIem, sFamily):
         self.set_header("Content-Type", "application/json")
