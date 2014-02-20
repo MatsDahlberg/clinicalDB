@@ -53,14 +53,14 @@ def getFamilyAttributes(tFamily):
             tGaRes.append({tGa[iGa].gene_annotation:iGa})
 
         return {'id':tFamily[iRow].family,
-                'database':tFamily[iRow].iem,
+                'clinical_db_gene_annotation':tFamily[iRow].iem,
                 'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                 'inheritence_models':tGmRes,
                 'functional_annotations':tFaRes,
                 'gene_annotations':tGaRes}
 
         tRes.append({'id':tFamily[iRow].family,
-                     'database':tFamily[iRow].iem,
+                     'clinical_db_gene_annotation':tFamily[iRow].iem,
                      'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                      'inheritence_models':tGmRes,
                      'functional_annotations':tFaRes,
@@ -128,15 +128,18 @@ class getVariant(BaseHandler):
         phast_const_elements,
         main_location,
         other_location,
-        gwas_catalog,
         phylop_whole_exome,
         expression_type,
         mutation_taster,
         genomic_super_dups,
         v.gene_annotation gene_annotation,
+        gt_call_filter,
         polyphen_div_human,
+        polyphen_var_human,
         gerp_whole_exome,
         disease_group,
+        hbvdb,
+        disease_gene_model,
         hgnc_transcript_id,
         IFNULL(max(rating), '') rating,
         variant_count
@@ -151,9 +154,17 @@ class getVariant(BaseHandler):
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
 
+        if len(tVariants) == 0:
+            self.set_status(406)            
+            self.write(json.dumps({"Error":"Variant not found"}))
+            return
+
+        sSql = """select family, pk from clinical.variant where chr='%s' and start_bp='%s' and alt_nt='%s' and
+               pk !=%s order by family""" % (tVariants[0].chr, tVariants[0].start_bp, tVariants[0].alt_nt, tVariants[0].pk)
+        tOtherVariants = db.query(sSql)
         self.write(json.dumps(
                         {'id':tVariants[0].pk,
-                         'database':tVariants[0].iem,
+                         'clinical_db_gene_annotation':tVariants[0].iem,
                          'rank_score':tVariants[0].rank_score,
                          'chr':tVariants[0].chr,
                          'ref_nt':tVariants[0].ref_nt,
@@ -185,18 +196,22 @@ class getVariant(BaseHandler):
                          'phast_const_elements':tVariants[0].phast_const_elements,
                          'main_location':tVariants[0].main_location,
                          'other_location':tVariants[0].other_location,
-                         'gwas_catalog':tVariants[0].gwas_catalog,
                          'phylop_whole_exome':tVariants[0].phylop_whole_exome,
                          'expression_type':tVariants[0].expression_type,
                          'mutation_taster':tVariants[0].mutation_taster,
                          'genomic_super_dups':tVariants[0].genomic_super_dups,
                          'gene_annotation':tVariants[0].gene_annotation,
+                         'GT_call_filter':tVariants[0].gt_call_filter,
                          'polyphen_div_human':tVariants[0].polyphen_div_human,
+                         'polyphen_var_human':tVariants[0].polyphen_var_human,
                          'gerp_whole_exome':tVariants[0].gerp_whole_exome,
                          'disease_group':tVariants[0].disease_group,
                          'hgnc_transcript_id':tVariants[0].hgnc_transcript_id,
                          'rating':tVariants[0].rating,
-                         'variant_count':tVariants[0].variant_count}, indent=4))
+                         'disease_gene_model':tVariants[0].disease_gene_model,
+                         'hbvdb':tVariants[0].hbvdb,
+                         'variant_count':tVariants[0].variant_count,
+                         'otherVariants':tOtherVariants}, indent=4))
 
 class getFamilyDatabase(BaseHandler):
     def get(self, family):
@@ -275,14 +290,17 @@ class getFamilyDatabase(BaseHandler):
         phast_const_elements,
         main_location,
         other_location,
-        gwas_catalog,
         phylop_whole_exome,
         expression_type,
         mutation_taster,
         genomic_super_dups,
         v.gene_annotation gene_annotation,
+        gt_call_filter,
         polyphen_div_human,
+        polyphen_var_human,
         gerp_whole_exome,
+        hbvdb,
+        disease_gene_model,
         disease_group,
         hgnc_transcript_id,
         IFNULL(max(rating), '') rating,
@@ -302,7 +320,7 @@ class getFamilyDatabase(BaseHandler):
         tRes = []
         for iRow in range(len(tVariants)):
             tRes.append({'id':tVariants[iRow].pk,
-                         'database':tVariants[iRow].iem,
+                         'clinical_db_gene_annotation':tVariants[iRow].iem,
                          'rank_score':tVariants[iRow].rank_score,
                          'chr':tVariants[iRow].chr,
                          'ref_nt':tVariants[iRow].ref_nt,
@@ -334,27 +352,54 @@ class getFamilyDatabase(BaseHandler):
                          'phast_const_elements':tVariants[iRow].phast_const_elements,
                          'main_location':tVariants[iRow].main_location,
                          'other_location':tVariants[iRow].other_location,
-                         'gwas_catalog':tVariants[iRow].gwas_catalog,
                          'phylop_whole_exome':tVariants[iRow].phylop_whole_exome,
                          'expression_type':tVariants[iRow].expression_type,
                          'mutation_taster':tVariants[iRow].mutation_taster,
                          'genomic_super_dups':tVariants[iRow].genomic_super_dups,
                          'gene_annotation':tVariants[iRow].gene_annotation,
-                         'polyphen_div_human':tVariants[iRow].polyphen_div_human,
+                         'GT_call_filter':tVariants[0].gt_call_filter,
+                         'polyphen_div_human':tVariants[0].polyphen_div_human,
+                         'polyphen_var_human':tVariants[0].polyphen_var_human,
                          'gerp_whole_exome':tVariants[iRow].gerp_whole_exome,
                          'disease_group':tVariants[iRow].disease_group,
                          'hgnc_transcript_id':tVariants[iRow].hgnc_transcript_id,
                          'rating':tVariants[iRow].rating,
+                         'hbvdb':tVariants[iRow].hbvdb,
+                         'disease_gene_model':tVariants[iRow].disease_gene_model,
                          'variant_count':tVariants[iRow].variant_count})
         self.write(json.dumps(tRes, indent=4))
 
 class launchVariantIGV(tornado.web.RequestHandler):
     def get(self, variant):
-        self.set_header("Content-Type", "text/xml")
-        tVariant = db.query("""select chr, (start_bp-100) as start_bp, (stop_bp+100) as stop_bp
+        #self.set_header("Content-Type", "text/xml")
+        tVariant = db.query("""select family, chr, (start_bp-100) as start_bp, (stop_bp+100) as stop_bp
                                from clinical.variant where pk='%s'""" % (variant))
-        t = template.Template(igv_session.sessionXml)
-        self.write(t.generate(chr=tVariant[0].chr, start_bp=tVariant[0].start_bp, stop_bp=tVariant[0].stop_bp))
+
+        if len(tVariant) == 0:
+            self.set_status(406)
+            self.set_header("Content-Type", "application/json")
+            self.set_header('Access-Control-Allow-Origin', '*')
+            self.write(json.dumps({"Error":"Variant not found"}))
+            return
+
+        sBroad = "http://www.broadinstitute.org/igv/projects/current/igv.php?sessionURL="
+        sDataFile = "https://clinical-db.scilifelab.se:8081/remote/static"
+        sLocus = "&genome=hg19&locus=" + str(tVariant[0].chr) + ":" + str(tVariant[0].start_bp) + "-" + str(tVariant[0].stop_bp)
+
+        tVcf = db.query("""select * from clinical.family where family='%s'""" % str(tVariant[0].family))
+        sVcfFile = tVcf[0].vcf_file.replace('/mnt/hds/proj/cust003/analysis/exomes', '')
+        sVcf = sDataFile + sVcfFile + ','
+
+        sBamFiles = ""
+        tPatient = db.query("""select bam_file from clinical.patient where family='%s' order by status""" % tVariant[0].family)
+        for i in range(len(tPatient)):
+            sBamFile = tPatient[i].bam_file.replace('/mnt/hds/proj/cust003/analysis/exomes', '')
+            sBamFiles += sDataFile + sBamFile
+            if i < len(tPatient)-1:
+                sBamFiles += ','
+
+        sRes = sBroad + sVcf + sBamFiles + sLocus
+        self.redirect(sRes)
 
 class getVariantGtCall(BaseHandler):
     def get(self, variant):
@@ -383,10 +428,19 @@ class getFamily(BaseHandler):
                   where institute in """
         sSql += self.sInst + " and family= '" + family + "'"
         tFamily = db.query(sSql)
+        sSql = """select idn, cmmsid, cmms_seqid, capture_date, capture_kit, capture_personnel, clinical_db, clustering_date,
+                  inheritance_model, isolation_date, isolation_kit, isolation_personnel, medical_doctor, phenotype, phenotype_terms,
+                  scilifeid, sequencing_kit, sex from clinical.patient where family = %s"""
+        tSamples = db.query(sSql, family)
 
+        tRes = []
+        tRes.append({'family':tFamily})
+        for saSample in tSamples:
+            tRes.append({saSample.idn:saSample})
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        self.write(json.dumps(tFamily, indent=4))
+        #self.write(json.dumps(tFamily, indent=4))
+        self.write(json.dumps(tRes, indent=4))
 
 class familyFilter(BaseHandler):
     def get(self, family):
@@ -410,7 +464,7 @@ class families(BaseHandler):
 
         for iRow in range(len(tFamily)):
             tRes.append({'id':tFamily[iRow].family,
-                         'database':tFamily[iRow].iem,
+                         'clinical_db_gene_annotation':tFamily[iRow].iem,
                          'pedigree':tFamily[iRow].pedigree,
                          'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d')})
 

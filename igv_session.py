@@ -1,8 +1,9 @@
 sessionXml ="""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <Session genome="hg19" hasGeneTrack="true" hasSequenceTrack="true" locus="{{chr}}:{{start_bp}}-{{stop_bp}}" version="8">
     <Resources>
-        <Resource path="http://localhost:5000/api/v1/static/99-1-1A.130815_BD26W2ACXX_indexAAGGACAC.lane4_sorted_pmd.bam"/>
-        <Resource path="http://localhost:5000/api/v1/static/99_sorted_pmd_rreal_brecal_vrecal_BOTH.vcf"/>
+        <Resource path="http://clinical-db:8082/static/99-2-1U/mosaik/GATK/99-2-1U.130815_BD26W2ACXX_indexAATGTTGC.lane5_sorted_pmd_rreal_brecal_reduced.bam"/>
+        <Resource path="http://clinical-db:8082/static/99-2-2U/mosaik/GATK/99-2-2U.130815_BD26W2ACXX_indexAATCCGTC.lane4_sorted_pmd_rreal_brecal_reduced.bam"/>
+        <Resource path="http://clinical-db:8082/static/99/mosaik/GATK/99_sorted_pmd_rreal_brecal_reduced_vrecal_BOTH.vcf"/>
     </Resources>
     <Panel height="96" name="DataPanel" width="1131">
         <Track SQUISHED_ROW_HEIGHT="4" altColor="0,0,178" autoScale="false" clazz="org.broad.igv.track.FeatureTrack" color="0,0,178" colorMode="GENOTYPE" displayMode="EXPANDED" featureVisibilityWindow="1994000" fontSize="10" id="http://localhost:5000/api/v1/static/99_sorted_pmd_rreal_brecal_vrecal_BOTH.vcf" name="99_sorted_pmd_rreal_brecal_vrecal_BOTH.vcf" renderer="BASIC_FEATURE" sortable="false" visible="true" windowFunction="count"/>
