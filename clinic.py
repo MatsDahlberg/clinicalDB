@@ -53,19 +53,39 @@ def getFamilyAttributes(tFamily):
             tGaRes.append({tGa[iGa].gene_annotation:iGa})
 
         return {'id':tFamily[iRow].family,
-                'clinical_db_gene_annotation':tFamily[iRow].iem,
-                'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
+                'clinical_db_gene_annotation':tFamily[iRow].database,
+                'update_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                 'inheritence_models':tGmRes,
                 'functional_annotations':tFaRes,
                 'gene_annotations':tGaRes}
 
         tRes.append({'id':tFamily[iRow].family,
                      'clinical_db_gene_annotation':tFamily[iRow].iem,
-                     'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
+                     'update_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                      'inheritence_models':tGmRes,
                      'functional_annotations':tFaRes,
                      'gene_annotations':tGaRes})
     return tRes
+
+def oneFamily(self, iFam):
+    sSql = """select family, iem as 'database', DATE_FORMAT(ts, '%%Y-%%m-%%d') update_date
+                  from clinical.family
+                  where institute in """
+    sSql += self.sInst + " and family= '" + iFam + "'"
+    tFamily = db.query(sSql)
+    sSql = """select idn, cmmsid, cmms_seqid, capture_date, capture_kit, capture_personnel, clinical_db, clustering_date,
+              inheritance_model, isolation_date, isolation_kit, isolation_personnel, medical_doctor, phenotype, phenotype_terms,
+              scilifeid, sequencing_kit, sex from clinical.patient where family = %s"""
+    tSamples = db.query(sSql, iFam)
+
+    tSamp = []
+    for saSample in tSamples:
+        tSamp.append(saSample)
+
+    return {'id':iFam,
+            'update_date':tFamily[0].update_date,
+            'database':tFamily[0].database,
+            'samples':tSamp}
 
 def checkLogin(self, slask):
     sEmail = self.get_cookie("email")
@@ -357,9 +377,9 @@ class getFamilyDatabase(BaseHandler):
                          'mutation_taster':tVariants[iRow].mutation_taster,
                          'genomic_super_dups':tVariants[iRow].genomic_super_dups,
                          'gene_annotation':tVariants[iRow].gene_annotation,
-                         'GT_call_filter':tVariants[0].gt_call_filter,
-                         'polyphen_div_human':tVariants[0].polyphen_div_human,
-                         'polyphen_var_human':tVariants[0].polyphen_var_human,
+                         'GT_call_filter':tVariants[iRow].gt_call_filter,
+                         'polyphen_div_human':tVariants[iRow].polyphen_div_human,
+                         'polyphen_var_human':tVariants[iRow].polyphen_var_human,
                          'gerp_whole_exome':tVariants[iRow].gerp_whole_exome,
                          'disease_group':tVariants[iRow].disease_group,
                          'hgnc_transcript_id':tVariants[iRow].hgnc_transcript_id,
@@ -423,20 +443,7 @@ class getVariantGtCall(BaseHandler):
 
 class getFamily(BaseHandler):
     def get(self, family):
-        sSql = """select family, iem, pedigree, DATE_FORMAT(ts, '%%Y-%%m-%%d') update_date
-                  from clinical.family
-                  where institute in """
-        sSql += self.sInst + " and family= '" + family + "'"
-        tFamily = db.query(sSql)
-        sSql = """select idn, cmmsid, cmms_seqid, capture_date, capture_kit, capture_personnel, clinical_db, clustering_date,
-                  inheritance_model, isolation_date, isolation_kit, isolation_personnel, medical_doctor, phenotype, phenotype_terms,
-                  scilifeid, sequencing_kit, sex from clinical.patient where family = %s"""
-        tSamples = db.query(sSql, family)
-
-        tRes = []
-        tRes.append({'family':tFamily})
-        for saSample in tSamples:
-            tRes.append({saSample.idn:saSample})
+        tRes = oneFamily(self, family)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
         #self.write(json.dumps(tFamily, indent=4))
@@ -444,7 +451,7 @@ class getFamily(BaseHandler):
 
 class familyFilter(BaseHandler):
     def get(self, family):
-        tFamily = db.query("""select family, iem, pedigree, ts
+        tFamily = db.query("""select family, iem as 'database', pedigree, ts
                               from clinical.family
                               where institute in %s and family='%s'""" % (self.sInst, family))
 
@@ -455,20 +462,24 @@ class familyFilter(BaseHandler):
 
 class families(BaseHandler):
     def get(self, *args, **kwargs):
-        tFamily = db.query("""select family, iem, pedigree, ts from clinical.family
+        tFamily = db.query("""select family from clinical.family
                               where institute in %s order by family *1""" % (self.sInst))
+
+        tFamRes = []
+        for i in range(len(tFamily)):
+            tFamRes.append(oneFamily(self, tFamily[i].family))
 
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
+        self.write(json.dumps(tFamRes, indent=4))
+        return
         tRes = []
-
         for iRow in range(len(tFamily)):
             tRes.append({'id':tFamily[iRow].family,
-                         'clinical_db_gene_annotation':tFamily[iRow].iem,
+                         'database':tFamily[iRow].iem,
                          'pedigree':tFamily[iRow].pedigree,
-                         'analyzed_date':tFamily[iRow].ts.strftime('%Y-%m-%d')})
+                         'update_date':tFamily[iRow].ts.strftime('%Y-%m-%d')})
 
-        self.write(json.dumps(tRes, indent=4))
 
 class geneInfo(BaseHandler):
     def loggedin(self, sEnsg, sIem, sFamily):
