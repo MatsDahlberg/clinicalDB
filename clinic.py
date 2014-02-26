@@ -240,6 +240,9 @@ class getFamilyDatabase(BaseHandler):
             return
         if database == 'RESEARCH':
             database = 'NO'
+        sOffset = common.cleanInput(self.get_argument('offset', '0'))
+        iOffset = int(sOffset)
+            
         functionalSql = ""
         geneSql = ""
         inheritenceSql = ""
@@ -332,7 +335,8 @@ class getFamilyDatabase(BaseHandler):
         (v.pk=c.variantid )
         where v.iem='%s' and v.family='%s' and f.institute in %s
         """ % (database, family, self.sInst)
-        sSql += inheritenceSql + geneSql + functionalSql + sRelationSql + sGeneNameSql + " group by v.pk order by rank_score desc LIMIT 100"
+        sSql += inheritenceSql + geneSql + functionalSql + sRelationSql + sGeneNameSql
+        sSql += " group by v.pk order by rank_score desc, pk LIMIT " + str(iOffset) + ',' + str(iOffset+100)
 
         tVariants = db.query(sSql)
         self.set_header("Content-Type", "application/json")
@@ -835,7 +839,7 @@ class omim(BaseHandler):
         sInput = gene
         client = httpclient.AsyncHTTPClient()
 
-        sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&format=python&apiKey=" + OMIMkey.OMIMkey
+        sUrl = "http://api.europe.omim.org/api/entry/search?search=approved_gene_symbol:" + sInput + "&include=geneMap,allelicVariantList&format=python&apiKey=" + OMIMkey.OMIMkey
         response = yield tornado.gen.Task(client.fetch, sUrl)
 
         def parseAllelicVariantList(saVariants):
@@ -849,8 +853,8 @@ class omim(BaseHandler):
         try:
             tt = ast.literal_eval(response.body)
             oMimId = tt['omim']['searchResponse']['entryList'][0]['entry']['mimNumber']
-
-            sUrl = "http://api.europe.omim.org/api/entry?mimNumber=" + oMimId + "&format=python&include=geneMap,allelicVariantList&apiKey=1CA3445230674C50904D46A059CDE2BC00BAD6E1"
+            oMimId = str(oMimId)
+            sUrl = "http://api.europe.omim.org/api/entry?mimNumber=" + oMimId + "&format=python&include=geneMap,allelicVariantList&apiKey=" + OMIMkey.OMIMkey
             response = yield tornado.gen.Task(client.fetch, sUrl)
 
             tt = ast.literal_eval(response.body)
