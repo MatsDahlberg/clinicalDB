@@ -10,10 +10,17 @@ import datetime
 import credentials as cred
 import igv_session
 import OMIMkey
+import re
+
 db = database.Connection(cred.mysqlHost,
                          cred.mysqlDb,
                          user=cred.mysqlUser,
                          password=cred.mysqlPw)
+
+def getInstitute(sInput):
+    rInst = re.compile("\W+(\w+).+")
+    sMatch = rInst.match(sInput)
+    return sMatch.group(1)
 
 class BaseHandler(tornado.web.RequestHandler):
     def prepare(self):
@@ -26,52 +33,48 @@ class BaseHandler(tornado.web.RequestHandler):
                 pass
             self.redirect('/noInst')
         self.sInst = sInst
+        self.institute = getInstitute(sInst)
+        instance = self.get_argument('institute', default=None)
+        instance = common.cleanInput(instance)
+        self.instance = instance
 
-def getFamilyAttributes(tFamily):
+def getFamilyAttributes(tFamily, institute):
     tRes = []
     for iRow in range(len(tFamily)):
         sSqlTmp = """select distinct(g.gene_model) gene_model from clinical.variant v,
-                    clinical.gene_model g where family='%s' and g.variantid = v.pk
-                    order by gene_model""" % (tFamily[iRow].family)
+                    clinical.gene_model g where family='%s' and g.variantid = v.pk and institute='%s'
+                    order by gene_model""" % (tFamily[iRow].family, institute)
         tGm = db.query(sSqlTmp)
         tGmRes = []
         for iGm in range(len(tGm)):
             tGmRes.append(tGm[iGm].gene_model)
             
         sSqlTmp = """select distinct(functional_annotation) functional_annotation from
-                    clinical.variant where family = '%s' order by functional_annotation
-                    """ % (tFamily[iRow].family)
+                    clinical.variant where family='%s' and institute='%s'
+                    order by functional_annotation
+                    """ % (tFamily[iRow].family, institute)
         tFa = db.query(sSqlTmp)
         tFaRes = []
         for iFa in range(len(tFa)):
             tFaRes.append(tFa[iFa].functional_annotation)
 
-        sSqlTmp = """select distinct(iem) clinical_db_gene_annotation from
-                    clinical.variant where family = '%s' order by clinical_db_gene_annotation
-                    """ % (tFamily[iRow].family)
-
+        sSqlTmp = """select iem clinical_db_gene_annotation from
+                    clinical.family where family='%s' and institute='%s'
+                    order by clinical_db_gene_annotation
+                    """ % (tFamily[iRow].family, institute)
         tIem = db.query(sSqlTmp)
-        for iItem in tIem:
-            if ':' in iItem.clinical_db_gene_annotation:
-                tIem.remove(iItem)
+        saIem = tIem[0].clinical_db_gene_annotation.split(',')
 
-        tIemRes = []
-        for iIem in range(len(tIem)):
-            sDb = tIem[iIem].clinical_db_gene_annotation
-            if tIem[iIem].clinical_db_gene_annotation == 'NO':
-                sDb = "Research"
-            tIemRes.append(sDb)
-            
         sSqlTmp = """select distinct(g.gene_annotation) gene_annotation from clinical.variant v,
-                  clinical.gene_annotation g where family = '%s' and g.variantid = v.pk
-                  order by gene_annotation """ % (tFamily[iRow].family)
+                  clinical.gene_annotation g where family = '%s' and g.variantid = v.pk and institute='%s'
+                  order by gene_annotation """ % (tFamily[iRow].family, institute)
         tGa = db.query(sSqlTmp)
         tGaRes = []
         for iGa in range(len(tGa)):
             tGaRes.append(tGa[iGa].gene_annotation)
 
         return {'id':tFamily[iRow].family,
-                'clinical_db_gene_annotation':tIemRes,
+                'clinical_db_gene_annotation':saIem,
                 'update_date':tFamily[iRow].ts.strftime('%Y-%m-%d'),
                 'inheritence_models':tGmRes,
                 'functional_annotations':tFaRes,
@@ -85,7 +88,7 @@ def getFamilyAttributes(tFamily):
                      'gene_annotations':tGaRes})
     return tRes
 
-def oneFamily(self, iFam):
+def oneFamily(self, iFam, institute):
     sSql = """select family, iem as 'database', DATE_FORMAT(ts, '%%Y-%%m-%%d') update_date
                   from clinical.family
                   where institute in """
@@ -94,8 +97,8 @@ def oneFamily(self, iFam):
     sSql = """select idn, cmmsid, cmms_seqid, capture_date, capture_kit, capture_personnel,
               clinical_db, clustering_date, inheritance_model, isolation_date, isolation_kit,
               isolation_personnel, medical_doctor, phenotype, phenotype_terms,
-              scilifeid, sequencing_kit, sex from clinical.patient where family = %s"""
-    tSamples = db.query(sSql, iFam)
+              scilifeid, sequencing_kit, sex from clinical.patient where family = %s and institute=%s"""
+    tSamples = db.query(sSql, iFam, institute)
 
     tSamp = []
     for saSample in tSamples:
@@ -150,10 +153,10 @@ class getCompounds(BaseHandler):
         tNewRes = []
         for saVar in tCompounds:
             sSql = """select pk as variantid from clinical.variant
-                  where
-                  family=%s and chr=%s and alt_nt=%s and start_bp=%s"""
+                  where family=%s and chr=%s and alt_nt=%s
+                  and start_bp=%s and institute=%s"""
             tVar = db.query(sSql, saVar.family, saVar.chr,
-                                 saVar.alt_nt, saVar.start_bp)
+                            saVar.alt_nt, saVar.start_bp, self.institute)
             if len(tVar) == 0:
                 continue
             sSql = """select v.pk as vpk, q.variantid gpk, functional_annotation,
@@ -261,7 +264,7 @@ class getVariant(BaseHandler):
         (v.pk=m.variantid and v.pk=a.variantid and v.family = f.family)
         left join clinical.variant_comment as c on
         (v.pk=c.variantid )
-        where v.pk='%s' and f.institute in %s group by v.pk""" % (variant, self.sInst)
+        where v.pk='%s' and f.institute='%s' group by v.pk""" % (variant, self.institute)
 
         tVariants = db.query(sSql)
         self.set_header("Content-Type", "application/json")
@@ -345,14 +348,14 @@ class getVariant(BaseHandler):
 class getFamilyDatabase(BaseHandler):
     def get(self, family):
         database = common.cleanInput(self.get_argument('database', ''))
-        if database.upper() not in ('IEM:EP', 'IEM', 'EP', 'RESEARCH'):
-            return
+        orderColumn = common.cleanInput(self.get_argument('combined_score', 'rank_score'))
+        if orderColumn != 'RANK_SCORE':
+            orderColumn = 'combined_score'
+
         if database == 'RESEARCH':
             sIemLike = " = 'NO' and rank_score > 5 "
-        elif database == 'EP':
-            sIemLike = " like '%%EP%%'"
         else:
-            sIemLike = " like 'IEM%%'"
+            sIemLike = " like '%%" + database.upper() + "%%'"
         sOffset = common.cleanInput(self.get_argument('offset', '0'))
         iOffset = int(sOffset)
             
@@ -398,6 +401,7 @@ class getFamilyDatabase(BaseHandler):
         sSql = """select distinct(v.pk),
         v.iem,
         rank_score,
+        combined_score,
         chr,
         ref_nt,
         alt_nt,
@@ -451,15 +455,15 @@ class getFamilyDatabase(BaseHandler):
         hgmd_variant_type,
         hgmd_variant_pmid,
         individual_rank_score
-        from clinical.variant v inner join (clinical.gene_model as m, 
-        clinical.gene_annotation as a, clinical.family f) on
-        (v.pk=m.variantid and v.pk=a.variantid and v.family = f.family)
+        from clinical.variant v inner join (clinical.gene_model as m,
+        clinical.gene_annotation as a) on
+        (v.pk=m.variantid and v.pk=a.variantid)
         left join clinical.variant_comment as c on
         (v.pk=c.variantid )
-        where v.iem %s and v.family='%s' and f.institute in %s
-        """ % (sIemLike, family, self.sInst)
+        where v.iem %s and v.family='%s' and v.institute = '%s'
+        """ % (sIemLike, family, self.institute)
         sSql += inheritenceSql + geneSql + functionalSql + sRelationSql + sGeneNameSql
-        sSql += " order by rank_score desc, pk LIMIT " + str(iOffset) + ',' + str(iOffset+100)
+        sSql += " order by " + orderColumn + " desc, pk LIMIT " + str(iOffset) + ',' + str(iOffset+100)
 
         #print sSql
         tVariants = db.query(sSql)
@@ -470,6 +474,7 @@ class getFamilyDatabase(BaseHandler):
             tRes.append({'id':tVariants[iRow].pk,
                          'clinical_db_gene_annotation':tVariants[iRow].iem,
                          'rank_score':tVariants[iRow].rank_score,
+                         'combined_score':tVariants[iRow].combined_score,
                          'chr':tVariants[iRow].chr,
                          'ref_nt':tVariants[iRow].ref_nt,
                          'alt_nt':tVariants[iRow].alt_nt,
@@ -525,12 +530,12 @@ class getFamilyDatabase(BaseHandler):
                          'individual_rank_score':tVariants[iRow].individual_rank_score})
         self.write(json.dumps(tRes, indent=4))
 
-class launchVariantIGV(tornado.web.RequestHandler):
+#class launchVariantIGV(tornado.web.RequestHandler):
+class launchVariantIGV(BaseHandler):
     def get(self, variant):
         #self.set_header("Content-Type", "text/xml")
         tVariant = db.query("""select family, chr, (start_bp-100) as start_bp, (stop_bp+100) as stop_bp
                                from clinical.variant where pk='%s'""" % (variant))
-
         if len(tVariant) == 0:
             self.set_status(406)
             self.set_header("Content-Type", "application/json")
@@ -541,15 +546,19 @@ class launchVariantIGV(tornado.web.RequestHandler):
         sBroad = "http://www.broadinstitute.org/igv/projects/current/igv.php?sessionURL="
         sDataFile = "https://clinical-db.scilifelab.se:8081/remote/static"
         sLocus = "&genome=hg19&locus=" + str(tVariant[0].chr) + ":" + str(tVariant[0].start_bp) + "-" + str(tVariant[0].stop_bp)
+        sInst = getInstitute(self.sInst)
 
-        tVcf = db.query("""select * from clinical.family where family='%s'""" % str(tVariant[0].family))
-        sVcfFile = tVcf[0].vcf_file.replace('/mnt/hds/proj/cust003/analysis/exomes', '')
+        sSql = """select * from clinical.family where family='%s'
+                  and institute='%s'""" % (str(tVariant[0].family), sInst)
+        tVcf = db.query(sSql)
+        sVcfFile = tVcf[0].vcf_file
         sVcf = sDataFile + sVcfFile + ','
 
         sBamFiles = ""
-        tPatient = db.query("""select bam_file from clinical.patient where family='%s' order by status""" % tVariant[0].family)
+        tPatient = db.query("""select bam_file from clinical.patient where family='%s'
+                               and institute='%s' order by status""" % (tVariant[0].family, sInst))
         for i in range(len(tPatient)):
-            sBamFile = tPatient[i].bam_file.replace('/mnt/hds/proj/cust003/analysis/exomes', '')
+            sBamFile = tPatient[i].bam_file
             sBamFiles += sDataFile + sBamFile
             if i < len(tPatient)-1:
                 sBamFiles += ','
@@ -572,30 +581,32 @@ class getVariantGtCall(BaseHandler):
 
 class getFamily(BaseHandler):
     def get(self, family):
-        tRes = oneFamily(self, family)
+        tRes = oneFamily(self, family, self.institute)
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
         self.write(json.dumps(tRes, indent=4))
 
 class familyFilter(BaseHandler):
     def get(self, family):
-        tFamily = db.query("""select family, iem as 'database', pedigree, ts
+        tFamily = db.query("""select family, iem as 'database', ts
                               from clinical.family
                               where institute in %s and family='%s'""" % (self.sInst, family))
 
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
-        tRes = getFamilyAttributes(tFamily)
+        institute = getInstitute(self.sInst)
+        tRes = getFamilyAttributes(tFamily, institute)
         self.write(json.dumps(tRes, indent=4))
 
 class families(BaseHandler):
     def get(self, *args, **kwargs):
         tFamily = db.query("""select family from clinical.family
-                              where institute in %s order by family *1""" % (self.sInst))
-
+                              where institute in %s and (iem is not null and iem!='')
+                              order by family *1""" % (self.sInst))
         tFamRes = []
+        institute = getInstitute(self.sInst)
         for i in range(len(tFamily)):
-            tFamRes.append(oneFamily(self, tFamily[i].family))
+            tFamRes.append(oneFamily(self, tFamily[i].family, institute))
 
         self.set_header("Content-Type", "application/json")
         self.set_header('Access-Control-Allow-Origin', '*')
@@ -605,91 +616,7 @@ class families(BaseHandler):
         for iRow in range(len(tFamily)):
             tRes.append({'id':tFamily[iRow].family,
                          'database':tFamily[iRow].iem,
-                         'pedigree':tFamily[iRow].pedigree,
                          'update_date':tFamily[iRow].ts.strftime('%Y-%m-%d')})
-
-
-class geneInfo(BaseHandler):
-    def loggedin(self, sEnsg, sIem, sFamily):
-        self.set_header("Content-Type", "application/json")
-        self.set_header('Access-Control-Allow-Origin', '*')
-
-        if sFamily == "":
-            tVariants = db.query("""select distinct(pk) pk from clinical.variant where
-            iem='%s' and ensembl_geneid like %s order by rank_score desc, (gene_model = 'AR_compound;') desc
-            """ % (sIem,  "'" + sEnsg + "%%'"))
-        else:
-            tVariants = db.query("""select distinct(pk) pk from clinical.variant where iem='%s' and
-            ensembl_geneid like %s and family='%s' order by rank_score desc, (gene_model = 'AR_compound;') desc
-            """ % (sIem, "'" + sEnsg + "%%'", sFamily))
-
-        if len(tVariants) == 0:
-            return {}
-        variants = []
-        for variant in tVariants:
-            tVariant = db.query("""select hgnc_symbol, variantid, q.idn, filter, gt, ad, dp, pl, gq, start_bp,
-                                  stop_bp, ref_nt, alt_nt, functional_annotation, gene_annotation, gene_model, rank_score
-                                  FROM clinical.variation_quality q, clinical.variant v where iem='%s' and
-                                  q.variantid = v.pk and v.pk='%s' order by idn""" % (sIem, variant.pk))
-            entry = [{'variantid':tVariant[0].variantid,
-                      'start_bp':tVariant[0].start_bp,
-                      'stop_bp':tVariant[0].stop_bp,
-                      'ref_nt':tVariant[0].ref_nt,
-                      'alt_nt':tVariant[0].alt_nt,
-                      'type':tVariant[0].gene_annotation,
-                      'gene':tVariant[0].hgnc_symbol,
-                      'rank_score':tVariant[0].rank_score,
-                      'functional_annotation':tVariant[0].functional_annotation,
-                      'gene_model':tVariant[0].gene_model}]
-            family = []
-            for patient in tVariant:
-                family.append({'idn':patient.idn,
-                               'ad':patient.ad,
-                               'dp':patient.dp,
-                               'gq':patient.gq,
-                               'gt':patient.gt,
-                               'pl':patient.pl,
-                               'filter':patient.filter
-                               })
-            entry.append(family)
-            variants.append(entry)
-
-        tExons = db.query("""select start_bp, stop_bp, gene_start, gene_end, chromosome, exon_id
-                  from clinical.gene2exon where ensg ='%s' order by start_bp""" % (sEnsg))
-        tRes = []
-
-        try:
-            for exon in range(len(tExons)):
-                tRes.append({'start_bp':tExons[exon].start_bp,
-                             'stop_bp':tExons[exon].stop_bp,
-                             'exon_id':tExons[exon].exon_id})
-
-            self.write(json.dumps({'variants':variants,
-                                   'exons':tRes,
-                                   'gene_start':tExons[0].gene_start,
-                                   'gene_end':tExons[0].gene_end,
-                                   'chr':tExons[0].chromosome}, sort_keys=True, indent=4))
-        except:
-            pass
-
-    def get(self, *args, **kwargs):
-        sInput = self.my_get_argument('data')
-        if sInput =="":
-            return
-
-        try:
-            sIem = self.my_get_argument('type')
-            if sIem not in ("IEM", "EP"):
-                sIem = "NO"
-        except Exception as e:
-            common.DBG(str(e))
-            sIem = "NO"
-        try:
-            sFamily = self.my_get_argument('family')
-        except Exception as e:
-            common.DBG(str(e))
-            sFamily = ""
-        self.loggedin(sInput, sIem, sFamily)
 
 class getVariantComment(tornado.web.RequestHandler):
     def get(self, variant, pk='all'):

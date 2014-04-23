@@ -12,7 +12,7 @@ logging.getLogger().setLevel(logging.DEBUG)
 application = tornado.web.Application([
     (r"/noInst", clinic.noInstitute),
     (r"/(favicon\.ico)", tornado.web.StaticFileHandler, {"path": "html"}),
-    (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "static"}),
+    (r"/static/(.*)", tornado.web.StaticFileHandler, {"path": "stat"}),
     (r"/families(/?)", clinic.families),
     (r"/families/(?P<family>[^\/]+)?/?", clinic.getFamily),
     (r"/families/(?P<family>[^\/]+)?/variants", clinic.getFamilyDatabase),
@@ -30,8 +30,7 @@ application = tornado.web.Application([
     (r"/other_families/(?P<variant>[\d]+)", clinic.getOtherFamilies),
     (r"/omim/(?P<gene>[^\/]+)?/?", clinic.omim),
     (r"/api", clinic.api),
-    (r"/geneInfo(.*)", clinic.geneInfo),
-    (r"/checkEmail/(?P<email>[^\/]+)", clinic.checkEmail),    
+    (r"/checkEmail/(?P<email>[^\/]+)", clinic.checkEmail),
     (r"/getRegion(.*)", clinic.getRegion),
     (r"(.*)", clinic.fourOfour),],
                                       cookie_secret="31oETzKXQAGaYdkL9gEmGeJJFuYh7EQnp1XdTP1o/Vo=",
